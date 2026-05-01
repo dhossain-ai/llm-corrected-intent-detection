@@ -33,9 +33,32 @@ rows.
 - Phase 1 dependencies are listed in `requirements.txt`.
 - A small import sanity test is included in `tests/test_imports.py`.
 
+## Phase 2 Noise Generation
+
+Phase 2 adds reproducible character-level synthetic noise for chatbot messages:
+
+- Character deletion
+- Character insertion
+- Adjacent character swaps
+- QWERTY neighbor typos
+- Mixed noise controlled by `noise_level`
+
+Generate clean and noisy CLINC150 test files:
+
+```bash
+python -m src.noise_generator
+```
+
+Run a quick sample export:
+
+```bash
+python -m src.noise_generator --sample-size 20
+```
+
+Generated CSV files are written to `data/processed/` and ignored by git.
+
 ## Planned Next Phases
 
-- Noise generation
 - Baseline model training
 - LLM correction workflow
 - Evaluation reports and figures
