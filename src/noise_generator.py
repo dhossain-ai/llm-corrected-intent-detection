@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import argparse
 import random
 import re
 import string
 from collections.abc import Callable
+from pathlib import Path
+
+import pandas as pd
+
+from src.config import PROCESSED_DATA_DIR
+from src.data_loader import load_clinc150
+from src.utils import ensure_directory
 
 
 QWERTY_NEIGHBORS: dict[str, tuple[str, ...]] = {
@@ -38,6 +46,7 @@ QWERTY_NEIGHBORS: dict[str, tuple[str, ...]] = {
 }
 
 NoiseOperation = Callable[[str, random.Random], str]
+SUPPORTED_NOISE_LEVELS = (0.05, 0.10, 0.20)
 
 
 def delete_character(text: str, rng: random.Random) -> str:
@@ -150,3 +159,93 @@ def _operation_count(token_count: int, noise_level: float, rng: random.Random) -
         base_count = min(base_count, max(1, token_count // 2))
 
     return base_count
+
+
+def build_noisy_test_frames(
+    test_df: pd.DataFrame,
+    seed: int = 42,
+) -> dict[float, pd.DataFrame]:
+    """Create clean and noisy CLINC150 test DataFrames keyed by noise level."""
+    frames = {0.0: _format_output_frame(test_df, test_df["text"], 0.0)}
+
+    for noise_level in SUPPORTED_NOISE_LEVELS:
+        noisy_text = [
+            generate_noisy_text(
+                text,
+                noise_level=noise_level,
+                seed=seed + row_index + int(noise_level * 1000),
+            )
+            for row_index, text in enumerate(test_df["text"].astype(str))
+        ]
+        frames[noise_level] = _format_output_frame(test_df, noisy_text, noise_level)
+
+    return frames
+
+
+def export_noisy_test_files(
+    output_dir: str | Path = PROCESSED_DATA_DIR,
+    seed: int = 42,
+    sample_size: int | None = None,
+) -> dict[float, Path]:
+    """Load CLINC150 test data and export clean/noisy CSV files."""
+    _, _, test_df, _, _ = load_clinc150()
+    if sample_size is not None:
+        test_df = test_df.head(sample_size).copy()
+
+    output_path = ensure_directory(output_dir)
+    frames = build_noisy_test_frames(test_df, seed=seed)
+    paths: dict[float, Path] = {}
+
+    for noise_level, frame in frames.items():
+        file_path = output_path / _output_filename(noise_level)
+        frame.to_csv(file_path, index=False)
+        paths[noise_level] = file_path
+
+    return paths
+
+
+def _format_output_frame(
+    source_df: pd.DataFrame,
+    noisy_text: pd.Series | list[str],
+    noise_level: float,
+) -> pd.DataFrame:
+    frame = source_df[["text", "intent", "split"]].copy()
+    frame["noisy_text"] = list(noisy_text)
+    frame["noise_level"] = noise_level
+    return frame[["text", "noisy_text", "intent", "split", "noise_level"]]
+
+
+def _output_filename(noise_level: float) -> str:
+    if noise_level == 0.0:
+        return "clinc150_test_clean.csv"
+    return f"clinc150_test_noisy_{int(noise_level * 100):02d}.csv"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate clean and synthetic noisy CLINC150 test CSV files."
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--sample-size", type=int, default=None)
+    parser.add_argument("--output-dir", type=Path, default=PROCESSED_DATA_DIR)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    paths = export_noisy_test_files(
+        output_dir=args.output_dir,
+        seed=args.seed,
+        sample_size=args.sample_size,
+    )
+
+    for noise_level, path in paths.items():
+        print(f"wrote noise_level={noise_level:.2f}: {path}")
+
+    noisy_sample = pd.read_csv(paths[0.10]).head(5)
+    print("sample noisy rows:")
+    print(noisy_sample[["text", "noisy_text", "intent"]].to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
