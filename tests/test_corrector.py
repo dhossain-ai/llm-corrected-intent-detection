@@ -40,3 +40,7 @@ def test_ollama_unavailable_returns_original_with_error(monkeypatch):
     assert result["method"] == "ollama"
     assert result["changed"] is False
     assert "Ollama is unavailable" in result["error"]
+
+
+def test_streamlit_app_imports_cleanly():
+    import app.streamlit_app  # noqa: F401
