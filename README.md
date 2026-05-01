@@ -57,9 +57,38 @@ python -m src.noise_generator --sample-size 20
 
 Generated CSV files are written to `data/processed/` and ignored by git.
 
+## Phase 3 TF-IDF Baseline
+
+Train the baseline intent classifier:
+
+```bash
+python -m src.train_tfidf
+```
+
+Generate clean and noisy test data first if the processed CSVs are missing:
+
+```bash
+python -m src.noise_generator
+```
+
+Evaluate the TF-IDF model:
+
+```bash
+python -m src.evaluate --model tfidf
+```
+
+Metrics are saved to `outputs/metrics/tfidf_results.csv`, and sample
+predictions are saved to `outputs/predictions/tfidf_sample_predictions.csv`.
+Generated model and output files are ignored by git.
+
+Accuracy is the share of examples with the correct intent. Macro F1 averages F1
+equally across labels, which makes weaker classes visible even when labels are
+imbalanced. Robustness score compares noisy accuracy to clean accuracy; clean is
+`1.0`, and noisy scores are `noisy_accuracy / clean_accuracy`.
+
 ## Planned Next Phases
 
-- Baseline model training
 - LLM correction workflow
+- DistilBERT baseline
 - Evaluation reports and figures
 - Streamlit application
