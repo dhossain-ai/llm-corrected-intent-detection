@@ -50,10 +50,11 @@ def train_tfidf_baseline(
             solver="liblinear",
             random_state=42,
         ),
-        n_jobs=-1,
+        n_jobs=1,
     )
 
     features = vectorizer.fit_transform(train_df["text"])
+    features.sort_indices()
     model.fit(features, train_df["intent"])
 
     return vectorizer, model, label2id, id2label
