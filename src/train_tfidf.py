@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import joblib
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
@@ -26,7 +27,12 @@ def train_tfidf_baseline(
     min_df: int = 1,
     max_iter: int = 1000,
     class_weight: str | None = None,
-) -> tuple[TfidfVectorizer, LogisticRegression, dict[str, int], dict[int, str]]:
+) -> tuple[
+    TfidfVectorizer,
+    OneVsRestClassifier,
+    dict[str, int],
+    dict[int, str],
+]:
     """Train the TF-IDF baseline on the CLINC150 train split."""
     train_df, _, _, label2id, id2label = load_clinc150()
 
@@ -37,11 +43,14 @@ def train_tfidf_baseline(
         lowercase=True,
         sublinear_tf=True,
     )
-    model = LogisticRegression(
-        max_iter=max_iter,
-        class_weight=class_weight,
-        solver="liblinear",
-        random_state=42,
+    model = OneVsRestClassifier(
+        LogisticRegression(
+            max_iter=max_iter,
+            class_weight=class_weight,
+            solver="liblinear",
+            random_state=42,
+        ),
+        n_jobs=-1,
     )
 
     features = vectorizer.fit_transform(train_df["text"])
@@ -52,7 +61,7 @@ def train_tfidf_baseline(
 
 def save_tfidf_artifacts(
     vectorizer: TfidfVectorizer,
-    model: LogisticRegression,
+    model: OneVsRestClassifier,
     label2id: dict[str, int],
     id2label: dict[int, str],
     output_dir: str | Path = MODELS_DIR,
