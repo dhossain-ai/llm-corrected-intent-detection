@@ -86,9 +86,38 @@ equally across labels, which makes weaker classes visible even when labels are
 imbalanced. Robustness score compares noisy accuracy to clean accuracy; clean is
 `1.0`, and noisy scores are `noisy_accuracy / clean_accuracy`.
 
+## Phase 4 Beta Ollama Demo
+
+Phase 4 adds a Milestone 2 beta pipeline:
+
+```text
+noisy input -> correction -> TF-IDF classifier -> intent
+```
+
+Install and start Ollama, then pull the local correction model:
+
+```bash
+ollama pull gemma3n:e2b
+```
+
+Train the TF-IDF baseline before running the app:
+
+```bash
+python -m src.train_tfidf
+```
+
+Run the beta Streamlit demo:
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+The app supports no correction, word-level spellchecker correction, and local
+Ollama correction. Ollama correction is a beta prototype; a later phase will add
+full correction evaluation and final reporting graphs.
+
 ## Planned Next Phases
 
-- LLM correction workflow
 - DistilBERT baseline
 - Evaluation reports and figures
-- Streamlit application
+- Full correction evaluation
