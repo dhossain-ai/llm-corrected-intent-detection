@@ -4,3 +4,6 @@ scikit-learn
 joblib
 python-dotenv
 pytest
+requests
+pyspellchecker
+streamlit
