@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import re
 
 import requests
 
 
 DEFAULT_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "gemma3n:e2b"
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
 
 
 def is_ollama_available(base_url: str = DEFAULT_BASE_URL) -> bool:
@@ -60,6 +61,9 @@ def correct_with_ollama(
         raise RuntimeError(
             f"Ollama correction timed out after {timeout} seconds."
         ) from exc
+    except requests.HTTPError as exc:
+        error_message = _build_ollama_http_error(response=response, model=model)
+        raise RuntimeError(error_message) from exc
     except requests.RequestException as exc:
         raise RuntimeError(f"Ollama correction request failed: {exc}") from exc
 
@@ -86,3 +90,23 @@ def _clean_ollama_response(response_text: str) -> str:
     ).strip()
     cleaned = cleaned.strip("\"'`“”‘’")
     return cleaned.strip()
+
+
+def _build_ollama_http_error(response: requests.Response, model: str) -> str:
+    error_text = ""
+    try:
+        error_text = str(response.json().get("error", "")).strip()
+    except ValueError:
+        error_text = response.text.strip()
+
+    if response.status_code == 404 and "model" in error_text.lower() and "not found" in error_text.lower():
+        return (
+            f"Ollama model not found: '{model}'. "
+            "Run 'ollama list' to see installed models, then set OLLAMA_MODEL "
+            "or change the default model in src/ollama_client.py."
+        )
+
+    if error_text:
+        return f"Ollama correction request failed (HTTP {response.status_code}): {error_text}"
+
+    return f"Ollama correction request failed (HTTP {response.status_code})."
